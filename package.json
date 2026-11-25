@@ -1,0 +1,19 @@
+{
+  "name": "howforceisexertedthroughbodies",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot server.ts",
+    "start": "NODE_ENV=production bun server.ts",
+    "build": "bun build ./index.html ./squat.html --outdir dist --minify"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

@@ -47,6 +47,7 @@ export const BONE_LABEL = {
 // anatomical angle (e.g. "abduct 30°") into a signed rotation about the world-aligned axis.
 // Dofs are composed in the listed order (first = outermost).
 export const JOINTS = {
+  pelvis: { label: 'pelvis', bones: [['pelvis', 1]], dofs: [['tilt', 'x', () => 1]] },
   trunk: { label: 'spine', bones: [['lumbar', 0.5], ['thorax', 0.5]], dofs: [['flex', 'x', () => 1], ['latflex', 'z', (s) => -s], ['rot', 'y', (s) => s]] },
   neck: { label: 'neck', bones: [['neck', 0.5], ['head', 0.5]], dofs: [['flex', 'x', () => 1], ['latflex', 'z', (s) => -s], ['rot', 'y', (s) => s]] },
   jaw: { label: 'jaw (TMJ)', bones: [['jaw', 1]], dofs: [['open', 'x', () => 1]] },
@@ -58,7 +59,8 @@ export const JOINTS = {
   wrist: { label: 'wrist', sided: true, bones: [['hand', 1]], dofs: [['flex', 'x', () => -1], ['radDev', 'z', (s) => s]] },
   fingers: { label: 'knuckles', sided: true, bones: [['fingers', 1]], dofs: [['flex', 'x', () => -1]] },
   hip: { label: 'hip', sided: true, bones: [['femur', 1]], dofs: [['flex', 'x', () => -1], ['abd', 'z', (s) => s], ['introt', 'y', (s) => -s]] },
-  knee: { label: 'knee', sided: true, bones: [['tibia', 1]], dofs: [['flex', 'x', () => 1]] },
+  // valgus: shin angled out relative to the thigh (used to show knees caving in).
+  knee: { label: 'knee', sided: true, bones: [['tibia', 1]], dofs: [['flex', 'x', () => 1], ['valgus', 'z', (s) => s]] },
   ankle: { label: 'ankle', sided: true, bones: [['foot', 1]], dofs: [['dorsi', 'x', () => -1], ['inv', 'z', (s) => -s]] },
   toes: { label: 'toe joints', sided: true, bones: [['toes', 1]], dofs: [['ext', 'x', () => -1]] },
 };
@@ -140,6 +142,7 @@ export class Skeleton {
   /** Apply a resolved pose (missing joints are neutral) and update world matrices. */
   apply(values) {
     for (const n in this.bones) this.bones[n].quaternion.identity();
+    this.root.position.copy(this.rest[this.root.name]);
     for (const key in values) {
       const m = key.match(/^(\w+?)(?:_(R|L))?$/);
       const J = JOINTS[m[1]];
@@ -156,6 +159,18 @@ export class Skeleton {
         this.bones[J.sided ? `${bone}_${S}` : bone].quaternion.copy(q);
       }
     }
+    this.root.updateMatrixWorld(true);
+    for (const n in this.bones) this.bones[n].matrixWorld.decompose(this._p, this.wq[n], this._s);
+  }
+
+  /** Shift the whole body so the given bones' pivots (default: both ankles) stay where they are at rest. */
+  plantFeet(bones = ['foot_R', 'foot_L']) {
+    const cur = new V3(), rest = new V3(), p = new V3();
+    for (const b of bones) {
+      cur.add(p.setFromMatrixPosition(this.bones[b].matrixWorld));
+      rest.add(this.rest[b]);
+    }
+    this.root.position.add(rest.sub(cur).multiplyScalar(1 / bones.length));
     this.root.updateMatrixWorld(true);
     for (const n in this.bones) this.bones[n].matrixWorld.decompose(this._p, this.wq[n], this._s);
   }

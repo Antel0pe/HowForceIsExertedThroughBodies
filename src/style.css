@@ -120,6 +120,20 @@ button, input, select { font: inherit; color: inherit; }
 .sw.axis { background: var(--axis); height: 3px; }
 .sw.nerve { background: var(--nerve); height: 3px; }
 
-@media (max-width: 1000px) {
-  #app { grid-template-columns: 210px 1fr 300px; }
+@media (max-width: 1250px) {
+  #app { grid-template-columns: 230px 1fr 320px; }
 }
+/* Narrow windows: the info panel moves under the 3D view and the page scrolls. */
+@media (max-width: 1050px) {
+  html, body { overflow: auto; }
+  #app { grid-template-columns: 220px 1fr; grid-template-rows: minmax(420px, 66vh) auto; height: auto; min-height: 100vh; }
+  #left { grid-row: 1 / span 2; max-height: 100vh; position: sticky; top: 0; }
+  #right { grid-column: 2; border-left: 0; border-top: 1px solid var(--line); }
+  #app #info, #app #rightScroll { height: auto; overflow: visible; }
+}
+
+/* cross-page navigation */
+.navlink { display: inline-block; font-size: 12px; color: var(--muted); text-decoration: none; margin-bottom: 8px; }
+.navlink:hover { color: var(--text); }
+.navlink.cta { margin: 2px 0 6px; color: var(--accent); }
+.lbl-com { color: #ffd23f; }

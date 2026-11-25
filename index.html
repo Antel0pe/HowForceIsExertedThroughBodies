@@ -4,21 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Muscle Force Explorer</title>
-  <link rel="stylesheet" href="src/style.css" />
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <div id="app">
     <aside id="left">
       <header>
         <h1>Muscle Force Explorer</h1>
+        <a class="navlink cta" href="./squat.html">Squat Lab: muscle sequence &amp; common faults →</a>
         <p>How each muscle pulls, what it moves, and how it is triggered.</p>
       </header>
       <input id="search" type="search" placeholder="Search muscles or activities (e.g. &quot;pull-up&quot;)" autocomplete="off" />
@@ -59,6 +52,6 @@
       <div id="info"></div>
     </aside>
   </div>
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>
