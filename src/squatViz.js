@@ -1,11 +1,10 @@
 // Squat Lab visuals that explain WHY a fault happens and what it overloads:
 //  - body-segment mechanics (centre of mass, joint loads from lever arms)
-//  - a proper-form ghost skeleton playing in sync
 //  - lever-arm lines + load gauges at knee, hip and lower back
 //  - knee-valgus visuals (floor force line, knee twist, MCL strain, adductor vs glute-medius tug of war)
 //  - butt-wink visuals (hip running out of range, lumbar disc squeezed)
 import * as THREE from 'three';
-import { Skeleton, buildBoneVisuals, SIDES, SIDE_SIGN } from './skeleton.js';
+import { SIDES, SIDE_SIGN } from './skeleton.js';
 
 const V3 = THREE.Vector3;
 const Yup = new V3(0, 1, 0);
@@ -130,16 +129,6 @@ export function createSquatViz(scene, { camera, showLabel }) {
     g.visible = true;
   };
 
-  // ---- proper-form ghost (a second skeleton) + stick figure
-  const ghost = new Skeleton();
-  scene.add(ghost.root);
-  const ghostMat = new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.32, depthWrite: false });
-  const ghostMeshes = buildBoneVisuals(ghost, { bone: ghostMat, cart: ghostMat, dark: ghostMat });
-  ghostMeshes.forEach((m) => (m.renderOrder = 5));
-  const ghostLegs = { R: line(3, 0x7fd8ff), L: line(3, 0x7fd8ff) };
-  const ghostSpine = line(3, 0x7fd8ff);
-  const ghostDots = Array.from({ length: 7 }, () => dot(0.01, 0x7fd8ff));
-
   // ---- loads
   const JOINT_COLOR = { knee: 0x6fd3ff, hip: 0xffb03c, back: 0xff7ab6 };
   const JOINT_NAME = { knee: 'knee', hip: 'hip', back: 'lower back' };
@@ -185,35 +174,15 @@ export function createSquatViz(scene, { camera, showLabel }) {
   const loadColor = (r) => (r < 0.75 ? 0x5fd38a : r < 1.05 ? 0xffd23f : 0xff5b5b);
 
   /**
-   * ctx: { skel, variant, ghostValues, kin, kinP, A, peaks, hipLimit, ui:{ghost,loads} }
+   * ctx: { skel, variant, kin, A, peaks, hipLimit, ui:{loads} }
    */
   function update(ctx) {
     const { skel, variant, kin, A, peaks, ui } = ctx;
     for (const o of items) o.visible = false;
     const fault = variant !== 'proper';
 
-    // Ghost of proper form at the same moment.
-    ghost.apply(ctx.ghostValues);
-    ghost.plantFeet();
-    const showGhost = fault && ui.ghost;
-    ghost.root.visible = showGhost;
-    if (showGhost) {
-      let i = 0;
-      for (const S of SIDES) {
-        const pts = [bonePos(ghost, `femur_${S}`), bonePos(ghost, `tibia_${S}`), bonePos(ghost, `foot_${S}`)];
-        setLine(ghostLegs[S], pts);
-        for (const p of pts.slice(0, 2)) { ghostDots[i].position.copy(p); ghostDots[i++].visible = true; }
-      }
-      const hipMid = bonePos(ghost, 'femur_R').add(bonePos(ghost, 'femur_L')).multiplyScalar(0.5);
-      const sp = [hipMid, bonePos(ghost, 'thorax'), bonePos(ghost, 'neck')];
-      setLine(ghostSpine, sp);
-      for (const p of sp) { ghostDots[i].position.copy(p); ghostDots[i++].visible = true; }
-      showLabel('ghost', bonePos(ghost, 'head').add(new V3(0, 0.1, 0)), 'proper form', 'lbl-ghost');
-    }
-
     // Joint loads: lever arm (dashed), line of the weight above (dashed), gauge.
     const L = jointLoads(skel);
-    const LP = fault ? jointLoads(ghost) : L;
     if (ui.loads && variant !== 'valgus') {
       for (const k of ['knee', 'hip', 'back']) {
         const v = loadViz[k], d = L[k];
@@ -226,16 +195,13 @@ export function createSquatViz(scene, { camera, showLabel }) {
         v.com.position.copy(top);
         v.com.visible = true;
         const r = d.torque / peaks[k];
-        setGauge(v.gauge, J, d.torque / (peaks[k] * 1.7), loadColor(r), fault ? LP[k].torque / (peaks[k] * 1.7) : null);
-        const ratio = LP[k].torque > 1 ? d.torque / LP[k].torque : 1;
-        const cmp = fault && Math.abs(ratio - 1) > 0.15 ? `  ×${ratio.toFixed(1)} vs proper` : '';
-        showLabel(`load-${k}`, J.clone().add(new V3(0, 0.06, 0)), `${JOINT_NAME[k]} ${d.torque.toFixed(0)} N·m${cmp}`, `lbl-load-${k}${r >= 1.05 ? ' over' : ''}`);
+        setGauge(v.gauge, J, d.torque / (peaks[k] * 1.7), loadColor(r));
+        showLabel(`load-${k}`, J.clone().add(new V3(0, 0.06, 0)), `${JOINT_NAME[k]} load`, `lbl-load-${k}${r >= 1.05 ? ' over' : ''}`);
       }
     }
 
     // Knees caving in: floor force line vs knee position.
     if (variant === 'valgus') {
-      let worst = 0;
       for (const S of SIDES) {
         const s = SIDE_SIGN[S];
         const cop = boneLocal(skel, `foot_${S}`, 0.105 * s, 0.0, 0.03);
@@ -247,9 +213,7 @@ export function createSquatViz(scene, { camera, showLabel }) {
         const onLine = cop.clone().addScaledVector(dir, t);
         const medial = (knee.x - onLine.x) * -s; // >0: knee is inside the force line
         const strain = Math.max(0, Math.min(1, medial / 0.035));
-        worst = Math.max(worst, strain);
         if (medial > 0.004) setLine(grfLever[S], [knee, onLine]);
-        if (S === 'R') showLabel('grfR', cop.clone().add(new V3(-0.04, 0.16, 0)), medial > 0.004 ? `knee ${(medial * 100).toFixed(1)} cm inside the floor push → twists the knee` : 'knee over the floor push ✓', medial > 0.004 ? 'lbl-warn' : 'lbl-ok');
         // MCL: inner side of the knee, from femur to tibia.
         const a = boneLocal(skel, `femur_${S}`, 0.072 * s, 0.515, -0.006), b = boneLocal(skel, `tibia_${S}`, 0.074 * s, 0.455, 0.004);
         cylBetween(mcl[S], a, b, 0.0045 + 0.003 * strain);
@@ -266,9 +230,6 @@ export function createSquatViz(scene, { camera, showLabel }) {
       const kR = bonePos(skel, 'tibia_R').add(new V3(0, 0.035, 0.03));
       setArrow(tugIn, kR, new V3(1, 0, 0), 0.02 + 0.14 * A.addTfl, 0.0035);
       setArrow(tugOut, kR, new V3(-1, 0, 0), 0.02 + 0.14 * A.gmed, 0.0035);
-      showLabel('tugIn', kR.clone().add(new V3(0.03 + 0.14 * A.addTfl, 0.07, 0)), 'adductors pull in', 'lbl-in');
-      showLabel('tugOut', kR.clone().add(new V3(-0.16 - 0.14 * A.gmed, 0.07, 0)), 'glute medius holds out', 'lbl-out');
-      if (worst > 0.12) showLabel('mcl', bonePos(skel, 'tibia_L').add(new V3(0.02, -0.14, 0)), 'knee twisted inward · inner ligament (MCL) stretched', 'lbl-warn');
     }
 
     // Butt wink: the hip runs out of range, so the pelvis has to tuck under; the disc is squeezed.
@@ -278,7 +239,6 @@ export function createSquatViz(scene, { camera, showLabel }) {
       const atLimit = frac > 0.985;
       const hip = bonePos(skel, 'femur_R');
       setGauge(hipRange, hip, frac * 0.75, atLimit ? 0xff5b5b : 0xb58cff, 0.75);
-      showLabel('hipRange', hip.clone().add(new V3(0, 0.02, -0.2)), atLimit ? `hip bend ${hipFlex.toFixed(0)}° = this hip's limit → pelvis must tuck` : `hip bend ${hipFlex.toFixed(0)}° of ${ctx.hipLimit}° range`, atLimit ? 'lbl-warn' : 'lbl-range');
       const flex = kin.wink + kin.lumbar;
       const k = Math.min(1, flex / 15);
       disc.position.copy(bonePos(skel, 'lumbar')).add(new V3(0, -0.012, 0.0));
@@ -286,9 +246,8 @@ export function createSquatViz(scene, { camera, showLabel }) {
       disc.scale.set(1 + 0.25 * k, 1 - 0.4 * k, 1 + 0.25 * k);
       disc.material.color.setRGB(1, 1 - 0.75 * k, 1 - 0.8 * k);
       disc.visible = true;
-      if (flex > 6) showLabel('disc', disc.position.clone().add(new V3(0, 0, -0.05)), 'lower-back disc squeezed at the front', 'lbl-warn');
     }
   }
 
-  return { ghost, update };
+  return { update };
 }

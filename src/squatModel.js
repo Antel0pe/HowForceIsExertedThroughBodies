@@ -1,18 +1,19 @@
-// Squat model: a timed rep cycle, whole-body joint angles for each moment, simulated muscle
-// activation (a teaching approximation of typical EMG patterns), and three common faults.
+// Squat model: a timed rep, whole-body joint angles for each moment, simulated muscle activation
+// (a teaching approximation of typical EMG patterns), and three common faults told as slow "stories".
 import { ease, clamp01 } from './viewer.js';
 
 const bump = (x) => Math.sin(Math.PI * clamp01(x));
+const lerp = (a, b, k) => a + (b - a) * k;
 
-// ------------------------------------------------------------------ rep cycle
+// ------------------------------------------------------------------ proper rep
 export const PHASES = [
-  { id: 'ready', dur: 0.5, label: 'Ready', sub: 'Standing relaxed' },
-  { id: 'brace', dur: 0.8, label: 'Set & brace', sub: 'Core switches on before anything moves' },
-  { id: 'descent', dur: 2.2, label: 'Descent', sub: 'Muscles lengthen under control (eccentric braking)' },
-  { id: 'bottom', dur: 0.45, label: 'Bottom', sub: 'Braking switches to driving' },
-  { id: 'ascent', dur: 1.9, label: 'Drive up', sub: 'Muscles shorten to lift you (concentric)' },
-  { id: 'lockout', dur: 0.6, label: 'Lockout', sub: 'Hips and knees finish extending' },
-  { id: 'rest', dur: 0.7, label: 'Relax', sub: 'Brace released' },
+  { id: 'ready', dur: 0.6, label: 'Ready', sub: '' },
+  { id: 'brace', dur: 0.9, label: 'Brace', sub: 'core tightens' },
+  { id: 'descent', dur: 2.6, label: 'Going down', sub: 'thighs + glutes brake' },
+  { id: 'bottom', dur: 0.8, label: 'Bottom', sub: 'brake turns into push' },
+  { id: 'ascent', dur: 2.4, label: 'Standing up', sub: 'thighs + glutes push' },
+  { id: 'lockout', dur: 0.8, label: 'Lockout', sub: 'glutes finish' },
+  { id: 'rest', dur: 0.7, label: 'Relax', sub: '' },
 ];
 export const CYCLE = PHASES.reduce((a, p) => a + p.dur, 0);
 
@@ -39,71 +40,175 @@ function state(p, k) {
   return { phase: p.id, phaseInfo: p, k, s, u, brace, arms };
 }
 
-// ------------------------------------------------------------------ the proper sequence
 export const STEPS = [
-  { phase: 'brace', title: 'Set & brace',
-    text: 'Feet about shoulder-width, toes slightly out. Breathe in and brace: transversus abdominis, the obliques and erector spinae co-contract and pressurise the abdomen, so the spine is stiff before any load moves.' },
-  { phase: 'descent', title: 'Descend: hips back and knees forward together',
-    text: 'Quads, gluteus maximus and adductor magnus are active while they LENGTHEN (eccentric), acting as brakes. Soleus lets the shin tip forward under control, tibialis anterior pulls you down into the ankle, and gluteus medius keeps the knees tracking over the toes.' },
-  { phase: 'bottom', title: 'Bottom: reverse without relaxing',
-    text: 'Glutes and adductor magnus are at their longest. The muscles switch from braking to driving, and stretched tissue gives back some elastic energy (the stretch–shortening cycle). Spine neutral, brace still on.' },
-  { phase: 'ascent', from: 0, to: 0.5, title: 'Drive out of the hole',
-    text: 'Quads straighten the knees while glute max and adductor magnus extend the hips at the same rate, so chest and hips rise together. This is the hardest part of the rep (the sticking point).' },
-  { phase: 'ascent', from: 0.5, to: 1, title: 'Finish the stand',
-    text: 'Knee and hip extension continue. The hamstrings help extend the hip, but they change length far less than the glutes: they shorten at the hip while they lengthen at the knee.' },
-  { phase: 'lockout', title: 'Lockout',
-    text: 'Glutes finish hip extension, quads lock the knees, the core stays braced. Breathe out at the top.' },
+  { phase: 'brace', title: 'Brace', text: 'core tightens first' },
+  { phase: 'descent', title: 'Go down', text: 'thighs + glutes brake' },
+  { phase: 'bottom', title: 'Bottom', text: 'brake turns into push' },
+  { phase: 'ascent', title: 'Stand up', text: 'thighs + glutes push' },
+  { phase: 'lockout', title: 'Lockout', text: 'glutes finish' },
 ];
 export function stepIndex(st) {
-  return STEPS.findIndex((s) => s.phase === st.phase && (s.from === undefined || (st.k >= s.from && st.k < s.to) || (s.to === 1 && st.k >= 1)));
+  return STEPS.findIndex((s) => s.phase === st.phase);
 }
 
 // ------------------------------------------------------------------ muscle groups
 export const GROUPS = [
-  { id: 'quads', name: 'Quadriceps', sub: 'vasti', muscles: ['vastusLateralis', 'vastusMedialis', 'vastusIntermedius'], role: 'Brake the knees bending on the way down and straighten them on the way up. Biggest knee-extension torque near the bottom.' },
-  { id: 'gmax', name: 'Gluteus maximus', muscles: ['gluteusMax'], role: 'Controls the hips folding back, drives hip extension out of the bottom and finishes the lockout.' },
-  { id: 'addMag', name: 'Adductor magnus', muscles: ['adductorMagnus'], role: 'A powerful hip extensor when the hips are deeply bent. Works hardest out of the hole.' },
-  { id: 'hams', name: 'Hamstrings', muscles: ['bicepsFemoris', 'semitendinosus', 'semimembranosus'], role: 'Cross both hip and knee, so their length changes much less than the glutes. They assist hip extension and steady the knee.' },
-  { id: 'gmed', name: 'Gluteus medius & minimus', muscles: ['gluteusMed', 'gluteusMin'], role: 'Hold the thighs out so the knees track over the toes and do not cave in.' },
-  { id: 'erector', name: 'Erector spinae', sub: '+ quadratus lumborum', muscles: ['erectorSpinae', 'quadratusLumborum'], role: 'Hold the spine neutral (isometric) while the torso leans forward.' },
-  { id: 'core', name: 'Core brace', sub: 'transversus, obliques, rectus', muscles: ['transversus', 'intOblique', 'extOblique', 'rectusAbd'], role: 'Pressurise the abdomen to stiffen the spine before and during the lift.' },
-  { id: 'calves', name: 'Calves', sub: 'soleus, gastrocnemius', muscles: ['soleus', 'gastrocnemius'], role: 'Control the shin tipping forward and keep your weight over mid-foot.' },
-  { id: 'tibAnt', name: 'Tibialis anterior', sub: '+ toe extensors', muscles: ['tibialisAnterior', 'edl'], role: 'Pulls the shin forward over the foot on the way down and helps balance.' },
-  { id: 'rf', name: 'Rectus femoris', muscles: ['rectusFemoris'], role: 'The two-joint quad. It extends the knee but also flexes the hip, so it is only moderately active in a squat.' },
-  { id: 'addTfl', name: 'Adductors & TFL', sub: 'longus, gracilis, TFL', muscles: ['adductorLongus', 'gracilis', 'tfl'], role: 'Inner-thigh and hip stabilisers. They take over when the knees cave in.' },
-  { id: 'iliopsoas', name: 'Iliopsoas', muscles: ['iliopsoas'], role: 'A little activity pulls you into the bottom position. Mostly quiet in a squat.' },
-  { id: 'arms', name: 'Front deltoid', sub: 'arms held forward', muscles: ['deltAnt', 'coracobrachialis'], role: 'Holds the arms out in front as a counter-balance.' },
+  { id: 'quads', name: 'Thighs (quads)', muscles: ['vastusLateralis', 'vastusMedialis', 'vastusIntermedius'], role: 'Brake the knees bending on the way down and straighten them on the way up.' },
+  { id: 'gmax', name: 'Glutes', muscles: ['gluteusMax'], role: 'Control the hips folding back, then push the hips forward to stand.' },
+  { id: 'addMag', name: 'Adductor magnus', muscles: ['adductorMagnus'], role: 'Inner-thigh muscle that helps the glutes out of the bottom.' },
+  { id: 'hams', name: 'Hamstrings', muscles: ['bicepsFemoris', 'semitendinosus', 'semimembranosus'], role: 'Help the glutes straighten the hips.' },
+  { id: 'gmed', name: 'Side glutes', muscles: ['gluteusMed', 'gluteusMin'], role: 'Hold the knees out over the toes.' },
+  { id: 'erector', name: 'Lower back', muscles: ['erectorSpinae', 'quadratusLumborum'], role: 'Hold the spine in shape while you lean forward.' },
+  { id: 'core', name: 'Abs (brace)', muscles: ['transversus', 'intOblique', 'extOblique', 'rectusAbd'], role: 'Stiffen the trunk like a belt.' },
+  { id: 'calves', name: 'Calves', muscles: ['soleus', 'gastrocnemius'], role: 'Keep your balance over the feet.' },
+  { id: 'tibAnt', name: 'Shins', muscles: ['tibialisAnterior', 'edl'], role: 'Pull the shins forward on the way down.' },
+  { id: 'rf', name: 'Rectus femoris', muscles: ['rectusFemoris'], role: 'The quad that also crosses the hip. Moderately active.' },
+  { id: 'addTfl', name: 'Inner thighs', muscles: ['adductorLongus', 'gracilis', 'tfl'], role: 'Pull the knees inward. Take over when the knees cave in.' },
+  { id: 'iliopsoas', name: 'Hip flexors', muscles: ['iliopsoas'], role: 'Mostly quiet in a squat.' },
+  { id: 'arms', name: 'Front shoulders', muscles: ['deltAnt', 'coracobrachialis'], role: 'Hold the arms out for balance.' },
 ];
 export const GROUP_OF = Object.fromEntries(GROUPS.flatMap((g) => g.muscles.map((m) => [m, g.id])));
 
 // ------------------------------------------------------------------ faults
+// list: the three things to see, in order. matters / fix: short notes behind a toggle.
 export const VARIANTS = [
   { id: 'proper', name: 'Proper form', view: 'three' },
   {
-    id: 'hips', name: 'Hips shoot up', title: 'Hips shoot up: the back takes over', view: 'side', faultSteps: [3, 4],
-    what: 'Out of the bottom, the knees straighten first, so the hips rise faster than the chest. The squat turns into a "good morning" and the torso tips toward horizontal.',
-    over: ['erector', 'hams'], under: ['quads', 'rf'],
-    why: 'The quads are weaker or more tired than the hip extensors, the load is too heavy, or "drive your hips up" is taken too literally.',
-    risk: 'With the torso near horizontal, the upper body sits far in front of the hips. Its moment arm grows, so the lower back must hold far more torque.',
-    fix: ['"Chest and hips rise at the same speed"', '"Push the floor away" instead of "hips up"', 'Pause squats and slow-tempo squats', 'Front or goblet squats to build the quads'],
+    id: 'hips', name: 'Hips shoot up', view: 'sideR',
+    list: ['Thighs tire and escape: legs straighten fast', 'Bent over, legs almost straight', 'Back rounds: discs + ligaments take the load'],
+    matters: ['Muscles heal in days and get stronger', 'Discs and ligaments heal in months'],
+    fix: ['Chest and hips rise together', 'Lighter weight, slower reps', 'Build the thighs: front / goblet squats'],
   },
   {
-    id: 'valgus', name: 'Knees cave in', title: 'Knees cave in (valgus)', view: 'knees', faultSteps: [1, 3, 4],
-    what: 'As you drive up, the knees drift inward past the big toes, because the thighs adduct and rotate in instead of tracking over the middle toes.',
-    over: ['addTfl', 'addMag'], under: ['gmed', 'gmax'],
-    why: 'Weak or slow hip abductors and external rotators (glute medius, glute max), limited ankle mobility, or the arches collapsing. Gets worse with fatigue.',
-    risk: 'Sideways (valgus) stress on the knee: the MCL, the ACL and how the kneecap tracks.',
-    fix: ['"Spread the floor" or "knees out over the little toes"', 'A mini-band around the knees as feedback', 'Strengthen glute medius: side-lying raises, banded walks, single-leg work', 'Check ankle dorsiflexion'],
+    id: 'valgus', name: 'Knees cave in', view: 'knees',
+    list: ['Side glutes tire', 'Knees fall inward', 'Knee twists: inner ligament strained'],
+    matters: ['The knee is a hinge: weak against twisting', 'Strains the MCL, ACL and kneecap'],
+    fix: ['Push the knees out over the little toes', 'Band around the knees as a reminder', 'Strengthen the side glutes'],
   },
   {
-    id: 'wink', name: 'Butt wink', title: 'Butt wink: the lower back rounds at the bottom', view: 'hips', faultSteps: [2],
-    what: 'Near the bottom, the pelvis tucks under (posterior tilt) and the lower back rounds, even though the torso angle hardly changes.',
-    over: ['hams'], under: ['erector', 'core'], passive: 'The passive tissues of the lumbar spine (discs and ligaments) take load the erectors and brace should be holding.',
-    why: 'Going deeper than your hip-flexion range allows (hip socket shape varies a lot between people), tight tissue at end range, limited ankle dorsiflexion, or losing the brace at the bottom.',
-    risk: 'Under heavy load, a flexed lumbar spine shifts stress onto the discs and ligaments. A small wink with light weights is usually harmless.',
-    fix: ['Squat only as deep as you can keep a neutral spine', 'Slightly wider stance, toes turned out a bit more', 'Re-brace before every rep and keep it at the bottom', 'Box squats to a set depth; ankle and hip mobility work'],
+    id: 'wink', name: 'Butt wink', view: 'hips',
+    list: ['Hip runs out of room', 'Pelvis tucks under to go lower', 'Lower back rounds: discs pinched'],
+    matters: ['Light weight: usually harmless', 'Heavy weight: discs take the strain'],
+    fix: ['Only go as deep as your back stays flat', 'Slightly wider stance, toes out', 'Re-brace at the bottom'],
   },
 ];
+
+// ------------------------------------------------------------------ fault stories
+// Each beat: dur (s), n (which of the 3 list items it shows, 0 = none), caption (few words),
+// at(k, ctx) → { st, round?, valgus?, flash?, act?, label? } for k = 0..1 through the beat.
+// label: { at: 'thigh'|'back'|'hip'|'knee'|'pelvis', text, bar?: { value 0..1, color } }: one at a time.
+const mk = (phase, s, u = null) => ({ phase, phaseInfo: PHASES.find((p) => p.id === phase), k: 0, s, u, brace: 1, arms: 1 });
+const RED = '#ff5b5b';
+
+// One continuous rep per fault. The way up is a single slow grind that follows one smooth speed curve
+// (no pauses, no sudden bursts); segments only change the caption, the straining (flashing) muscles and
+// what the body does at that point. flash: groups that pulse red because they are straining.
+const sm = (k) => k * k * (3 - 2 * k);
+/** Smooth, monotone u(τ) through keyframes [[τ, u], …] (cubic Hermite with averaged slopes). */
+function curve(keys) {
+  const m = keys.map((_, i) => {
+    const a = keys[Math.max(0, i - 1)], b = keys[Math.min(keys.length - 1, i + 1)];
+    return (b[1] - a[1]) / (b[0] - a[0]);
+  });
+  m[0] = 0; // start from a standstill at the bottom
+  return (t) => {
+    if (t <= keys[0][0]) return keys[0][1];
+    for (let i = 0; i < keys.length - 1; i++) {
+      const [t0, u0] = keys[i], [t1, u1] = keys[i + 1];
+      if (t <= t1) {
+        const h = t1 - t0, s = (t - t0) / h, s2 = s * s, s3 = s2 * s;
+        return (2 * s3 - 3 * s2 + 1) * u0 + (s3 - 2 * s2 + s) * h * m[i] + (-2 * s3 + 3 * s2) * u1 + (s3 - s2) * h * m[i + 1];
+      }
+    }
+    return keys[keys.length - 1][1];
+  };
+}
+/** Split one continuous ascent (driven by τ) into captioned segments. */
+function ascentSegments(segs, fn) {
+  let t0 = 0;
+  return segs.map(([dur, n, caption]) => {
+    const start = t0;
+    t0 += dur;
+    return { dur, n, caption, at: (k, c) => fn(start + k * dur, c) };
+  });
+}
+
+// Hips shoot up: legs straighten early (built into the 'hips' kinematics), the back holds, starts losing
+// and rounds while you are bent over, then straightens again as the chest finally comes up.
+// Hips stay low (bent over) through the hold and the rounding; the chest only comes up at the end.
+const HIPS_U = curve([[0, 0], [2.2, 0.1], [3.8, 0.36], [5.6, 0.42], [7.0, 0.47], [9.2, 1]]);
+const hipsAscent = (τ) => {
+  const u = HIPS_U(τ);
+  const round = sm(clamp01((τ - 3.0) / 3.8)) * (1 - sm(clamp01((τ - 7.0) / 2.0)));
+  const thighs = 1 - sm(clamp01((τ - 2.2) / 1.6)); // thighs strain, then escape
+  // Back muscles strain while holding you bent over, then hand the load over as the back rounds.
+  const back = sm(clamp01((τ - 2.6) / 1.4)) * (1 - sm(clamp01((τ - 5.0) / 0.8)));
+  return {
+    st: mk('ascent', 1 - u, u), round, flash: { quads: thighs, erector: back },
+    act: { quads: lerp(0.2, 1, thighs), erector: Math.max(0.3, 0.95 * back + 0.45 * round * (1 - back)), hams: 0.65, gmax: 0.65 },
+  };
+};
+
+const VALGUS_U = curve([[0, 0], [2.2, 0.07], [3.8, 0.28], [6.0, 0.45], [7.8, 1]]);
+const valgusAscent = (τ) => {
+  const u = VALGUS_U(τ);
+  const glutes = 1 - 0.7 * sm(clamp01((τ - 2.6) / 1.6));
+  const v = (3 + 12 * sm(clamp01((τ - 1.6) / 2.4))) * (1 - sm(clamp01((τ - 6.0) / 1.8)));
+  return { st: mk('ascent', 1 - u, u), valgus: v, flash: { gmed: glutes * (1 - sm(clamp01((τ - 5.5) / 1.5))) },
+    act: { gmed: lerp(0.15, 0.5, glutes), addTfl: lerp(0.3, 0.85, sm(clamp01((τ - 2.2) / 1.8))) } };
+};
+
+const WINK_U = curve([[0, 0], [1.4, 0.15], [3.6, 1]]);
+
+export const STORIES = {
+  hips: [
+    { dur: 2.4, n: 0, caption: 'Going down', at: (k) => ({ st: mk('descent', ease(k)) }) },
+    ...ascentSegments([
+      [2.2, 1, 'Thighs struggle to push up'],
+      [1.6, 1, 'Legs straighten first'],
+      [1.8, 2, 'Bent over: the back takes the weight'],
+      [1.4, 3, 'Back rounds'],
+      [2.2, 3, 'Back straightens as you stand'],
+    ], hipsAscent),
+    { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },
+  ],
+  valgus: [
+    { dur: 2.4, n: 0, caption: 'Going down', at: (k) => ({ st: mk('descent', ease(k)), valgus: 3 * ease(k) }) },
+    ...ascentSegments([
+      [2.2, 1, 'Side glutes struggle'],
+      [1.6, 2, 'Knees fall inward'],
+      [2.2, 3, 'Knee twists: inner ligament strained'],
+      [1.8, 0, 'Stands up'],
+    ], valgusAscent),
+    { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },
+  ],
+  // ctx.sLim (the depth where this hip runs out of room) is filled in by the page.
+  wink: [
+    { dur: 2.0, n: 0, caption: 'Going down', at: (k, c) => ({ st: mk('descent', (c.sLim - 0.04) * ease(k)) }) },
+    { dur: 1.6, n: 1, caption: 'Hip runs out of room', at: (k, c) => ({ st: mk('descent', lerp(c.sLim - 0.04, c.sLim + 0.01, k)) }) },
+    { dur: 2.0, n: 2, caption: 'Pelvis tucks under to go lower', at: (k, c) => ({ st: mk('descent', lerp(c.sLim + 0.01, 0.97, sm(k))) }) },
+    { dur: 1.6, n: 3, caption: 'Lower back rounds: discs pinched', at: (k) => ({ st: mk('descent', lerp(0.97, 1, k)), act: { erector: 0.3 } }) },
+    { dur: 3.6, n: 0, caption: 'Stands up', at: (k) => { const u = WINK_U(k * 3.6); return { st: mk('ascent', 1 - u, u) }; } },
+    { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },
+  ],
+};
+export const storyLength = (vid) => STORIES[vid].reduce((a, b) => a + b.dur, 0);
+/** The beat at time t of a fault's story, and what it sets. */
+export function storyAt(vid, t, ctx) {
+  const beats = STORIES[vid];
+  const T = storyLength(vid);
+  let x = ((t % T) + T) % T;
+  for (let i = 0; i < beats.length; i++) {
+    const b = beats[i];
+    if (x < b.dur || i === beats.length - 1) {
+      const k = clamp01(x / b.dur);
+      const f = b.at(k, ctx);
+      f.st.k = k;
+      return { ...f, beat: b, index: i, k };
+    }
+    x -= b.dur;
+  }
+}
 
 // ------------------------------------------------------------------ kinematics
 /** Hip-flexion range of the lifter in the butt-wink example (degrees). Proper-form lifter is not limited. */

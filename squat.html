@@ -13,51 +13,44 @@
       <header>
         <a class="navlink" href="./">← Muscle Explorer</a>
         <h1>Squat Lab</h1>
-        <p>The order muscles fire to go down and back up, and what changes when technique breaks down.</p>
       </header>
       <div id="variants"></div>
       <div id="leftScroll">
-        <div id="faultCard"></div>
-        <h3 class="sec">The sequence</h3>
         <ol id="steps"></ol>
+        <div id="notes"></div>
       </div>
     </aside>
 
     <main id="viewport">
-      <div id="phase"><b></b><span></span></div>
+      <div id="phase"></div>
       <div id="views">
         <button data-view="three">¾</button>
         <button data-view="front">Front</button>
         <button data-view="side">Side</button>
         <button data-view="back">Back</button>
       </div>
+      <svg id="zoomLink"><line/><circle r="16"/></svg>
+      <div id="spine"></div>
       <div id="labels"></div>
-      <div id="vizLegend">
-        <span><i class="lg dash"></i>lever arm</span>
-        <span><i class="lg ring"></i>joint load: <b class="g">ok</b> <b class="y">high</b> <b class="r">over proper peak</b></span>
-        <span class="faultOnly"><i class="lg tick"></i>proper-form load</span>
-        <span class="faultOnly"><i class="lg ghostSw"></i>proper-form ghost</span>
-      </div>
       <div id="tooltip"></div>
       <div id="toolbar">
         <div id="playbar">
           <button id="play" title="Pause (Space)">❚❚</button>
-          <input id="scrub" type="range" min="0" max="1000" value="0" title="Scrub through the rep" />
+          <input id="scrub" type="range" min="0" max="1000" value="0" title="Scrub" />
           <select id="speed" title="Playback speed">
-            <option value="0.4">0.4×</option>
-            <option value="0.7">0.7×</option>
+            <option value="0.5">0.5×</option>
+            <option value="0.75">0.75×</option>
             <option value="1" selected>1×</option>
             <option value="1.5">1.5×</option>
           </select>
         </div>
         <div id="toggles">
           <label><input type="checkbox" id="tSkel" checked />Skeleton</label>
-          <label class="thr-ctl" title="Muscles light up only when working above this level">Light up above <input type="range" id="tThr" min="0" max="80" value="35" /><b id="tThrVal">35%</b></label>
-          <label title="Fade muscles below the light-up level (otherwise they are just dimmed)"><input type="checkbox" id="tFade" checked />Fade the rest</label>
-          <label title="Lever arms and joint-load gauges at knee, hip and lower back"><input type="checkbox" id="tLoads" checked />Joint loads</label>
-          <label title="Faint skeleton doing the same rep with proper form"><input type="checkbox" id="tGhost" checked />Proper-form ghost</label>
-          <label title="Hip–knee–ankle and torso lines"><input type="checkbox" id="tAlign" checked />Alignment</label>
-          <label title="Centre of mass over the feet"><input type="checkbox" id="tBalance" checked />Balance</label>
+          <label class="thr-ctl" title="Muscles glow only when working above this level">Glow above <input type="range" id="tThr" min="0" max="80" value="35" /><b id="tThrVal">35%</b></label>
+          <label title="Fade muscles that are not glowing"><input type="checkbox" id="tFade" checked />Fade the rest</label>
+          <label title="Load on knee, hip and lower back"><input type="checkbox" id="tLoads" />Joint loads</label>
+          <label title="Hip–knee–ankle and torso lines"><input type="checkbox" id="tAlign" />Lines</label>
+          <label title="Centre of mass over the feet"><input type="checkbox" id="tBalance" />Balance</label>
         </div>
       </div>
     </main>
@@ -65,7 +58,7 @@
     <aside id="right">
       <div id="rightScroll">
         <div id="picked"></div>
-        <h3 class="sec">Muscle activation <small>(simulated EMG)</small></h3>
+        <h3 class="sec">How hard each muscle works</h3>
         <div class="emg-legend">
           <span><i class="m con"></i>shortening</span>
           <span><i class="m ecc"></i>lengthening</span>
@@ -73,9 +66,7 @@
           <span id="tickLegend"><i class="tickSw"></i>proper form</span>
         </div>
         <div id="emg"></div>
-        <h3 class="sec">Joint angles</h3>
-        <div id="angles"></div>
-        <p class="fine">Activation levels are a teaching approximation of typical surface-EMG patterns in a bodyweight squat, not measurements. Shortening/lengthening is computed from the model's muscle lengths.</p>
+        <p class="fine">Simulated, not measured.</p>
       </div>
     </aside>
   </div>

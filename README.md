@@ -31,20 +31,18 @@ so everything works offline. There is no CDN.
 
 ### Squat Lab (`/squat.html`)
 
-- Plays a full bodyweight squat: brace → descent → bottom → drive up → lockout. The step list follows along.
-- Only muscles working **above the light-up level** glow (35% by default, adjustable); the rest are dimmed.
-  The bars on the right show every muscle group's simulated activation and whether it is shortening,
-  lengthening or holding. That last part is computed from the model's muscle lengths.
-- The torso lean is solved each frame so the centre of mass stays over mid-foot (the yellow plumb line).
-- **Joint loads:** dashed lever arms and ring gauges at the knee, hip and lower back show the load each joint carries
-  (weight above × lever arm). In a fault, a white tick marks the proper-form load and the label shows the ratio.
-- **Proper-form ghost:** a faint cyan skeleton does the same rep with good form, so you can see where the fault departs.
-- **Knees cave in:** a vertical floor-push arrow per foot. A knee inside it gets a red twist arc and a strained MCL,
-  plus a tug of war between the adductors and glute medius. **Butt wink** is not scripted: this lifter's hip
-  reaches its 125° limit, so the pelvis has to tuck and the lower-back disc turns red.
-- There are three common faults to compare: **hips shoot up** (the back takes over), **knees cave in** (valgus),
-  and **butt wink**. Amber muscles work harder than in proper form and blue ones work less. Each fault
-  has a card covering why it happens, why it matters and how to fix it.
+- **Proper form** plays a full bodyweight rep with one short caption per phase. Only muscles working above the
+  glow level light up, and the glow fades smoothly instead of blinking. The torso lean is solved so the centre of
+  mass stays over the feet.
+- **Each fault plays as a slow story** in three numbered beats, with pauses on the moments that matter and one
+  label at a time:
+  - **Hips shoot up:** the thighs burn (shaking, strength bar draining) → the legs straighten first → bent over,
+    and the back holds it all → the back muscles give way, the spine rounds, and you stand up on the discs and ligaments.
+  - **Knees cave in:** the side glutes tire → the knees fall inward → the knee twists and the inner ligament is stretched.
+  - **Butt wink:** the hip runs out of room → the pelvis tucks under to go lower → the lower back rounds.
+- A **lower-back close-up** (hips-up and butt wink) shows the vertebrae, discs, ligament and back muscle. A straight
+  spine squeezes the discs evenly; a rounded one pinches them at the front and pushes them out the back.
+- Optional overlays: joint loads, hip–knee–ankle lines, balance line.
 
 ## How it works
 
@@ -56,8 +54,10 @@ so everything works offline. There is no CDN.
 | `src/muscleMesh.js` | A muscle strand: a tube that follows its attachment points and bulges as it shortens |
 | `src/viewer.js` | Shared stage (renderer, camera, lights), body (skeleton + muscles) and muscle picker |
 | `src/main.js` | Muscle Explorer page: playback, force and moment-arm overlays, UI |
-| `src/squatModel.js` | Squat rep timeline, joint angles, simulated activation, fault definitions |
-| `src/squat.js` | Squat Lab page: balance solver, alignment/balance overlays, activation bars |
+| `src/squatModel.js` | Squat rep timeline, joint angles, simulated activation, faults and their paced stories |
+| `src/squat.js` | Squat Lab page: balance solver, story playback, one-label policy, activation bars |
+| `src/squatViz.js` | Body mechanics (centre of mass, joint loads) and the knee / hip fault visuals |
+| `src/spineInset.js` | Lower-back close-up: vertebrae, discs, ligament and back muscle |
 | `server.ts` | Bun dev/production server (bundles `index.html` and `squat.html`) |
 
 The moment arm shown is the *effective* one: how much the muscle shortens per radian of joint rotation.
