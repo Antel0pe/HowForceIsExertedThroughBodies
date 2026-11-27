@@ -87,7 +87,7 @@ export const VARIANTS = [
   },
   {
     id: 'wink', name: 'Butt wink', view: 'hips',
-    list: ['Hip runs out of room', 'Pelvis tucks under to go lower', 'Lower back rounds: discs pinched'],
+    list: ['Too low: the thigh jams into the hip', 'Pelvis rolls under to go lower', 'Lower back rounds: discs pinched'],
     matters: ['Light weight: usually harmless', 'Heavy weight: discs take the strain'],
     fix: ['Only go as deep as your back stays flat', 'Slightly wider stance, toes out', 'Re-brace at the bottom'],
   },
@@ -155,7 +155,7 @@ const valgusAscent = (τ) => {
   const glutes = 1 - 0.7 * sm(clamp01((τ - 2.6) / 1.6));
   const v = (3 + 12 * sm(clamp01((τ - 1.6) / 2.4))) * (1 - sm(clamp01((τ - 6.0) / 1.8)));
   return { st: mk('ascent', 1 - u, u), valgus: v, flash: { gmed: glutes * (1 - sm(clamp01((τ - 5.5) / 1.5))) },
-    act: { gmed: lerp(0.15, 0.5, glutes), addTfl: lerp(0.3, 0.85, sm(clamp01((τ - 2.2) / 1.8))) } };
+    act: { gmed: lerp(0.15, 0.5, glutes), addTfl: 0.25 } };
 };
 
 const WINK_U = curve([[0, 0], [1.4, 0.15], [3.6, 1]]);
@@ -185,8 +185,8 @@ export const STORIES = {
   // ctx.sLim (the depth where this hip runs out of room) is filled in by the page.
   wink: [
     { dur: 2.0, n: 0, caption: 'Going down', at: (k, c) => ({ st: mk('descent', (c.sLim - 0.04) * ease(k)) }) },
-    { dur: 1.6, n: 1, caption: 'Hip runs out of room', at: (k, c) => ({ st: mk('descent', lerp(c.sLim - 0.04, c.sLim + 0.01, k)) }) },
-    { dur: 2.0, n: 2, caption: 'Pelvis tucks under to go lower', at: (k, c) => ({ st: mk('descent', lerp(c.sLim + 0.01, 0.97, sm(k))) }) },
+    { dur: 1.6, n: 1, caption: 'Too low: the thigh jams into the hip', at: (k, c) => ({ st: mk('descent', lerp(c.sLim - 0.04, c.sLim + 0.01, k)) }) },
+    { dur: 2.0, n: 2, caption: 'Pelvis rolls under to go lower', at: (k, c) => ({ st: mk('descent', lerp(c.sLim + 0.01, 0.97, sm(k))) }) },
     { dur: 1.6, n: 3, caption: 'Lower back rounds: discs pinched', at: (k) => ({ st: mk('descent', lerp(0.97, 1, k)), act: { erector: 0.3 } }) },
     { dur: 3.6, n: 0, caption: 'Stands up', at: (k) => { const u = WINK_U(k * 3.6); return { st: mk('ascent', 1 - u, u) }; } },
     { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },

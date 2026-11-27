@@ -1,8 +1,8 @@
 // Squat Lab visuals that explain WHY a fault happens and what it overloads:
 //  - body-segment mechanics (centre of mass, joint loads from lever arms)
 //  - lever-arm lines + load gauges at knee, hip and lower back
-//  - knee-valgus visuals (floor force line, knee twist, MCL strain, adductor vs glute-medius tug of war)
-//  - butt-wink visuals (hip running out of range, lumbar disc squeezed)
+//  - knee-valgus visual (inner knee ligament stretched)
+//  - butt-wink visuals (thigh jamming into the hip, pelvis rolled under)
 import * as THREE from 'three';
 import { SIDES, SIDE_SIGN } from './skeleton.js';
 
@@ -137,33 +137,33 @@ export function createSquatViz(scene, { camera, showLabel }) {
     loadViz[k] = { lever: line(2, JOINT_COLOR[k], true), drop: line(2, JOINT_COLOR[k], true), com: dot(0.008, JOINT_COLOR[k]), gauge: gauge(0.07, 0.015) };
   }
 
-  // ---- valgus
-  const grf = { R: arrow(0x9be7ff), L: arrow(0x9be7ff) };
-  const grfLever = { R: line(2, 0xff5b5b, true), L: line(2, 0xff5b5b, true) };
+  // ---- knees caving in: the inner knee ligament (MCL) on each knee, throbbing red when stretched
   const mcl = {};
-  const twist = {};
-  for (const S of SIDES) {
-    mcl[S] = reg(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 10), basicMat(0xffffff, 0.9)), 43);
+  for (const S of SIDES) mcl[S] = reg(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 10), basicMat(0xffffff, 0.9)), 43);
+
+  // ---- butt wink: the thigh jams into the hip, then the pelvis is rolled under
+  const pushArrow = arrow(0xff3b2f);
+  const contact = dot(0.016, 0xff2a1a);
+  const tuck = (() => {
+    // Arc around the pelvis in the side (YZ) plane: from behind, curling down and forward under it.
+    const r = 0.13, pts = [];
+    for (let i = 0; i <= 24; i++) {
+      const θ = THREE.MathUtils.degToRad(150 + (255 - 150) * (i / 24));
+      pts.push(new V3(0, Math.sin(θ) * r, Math.cos(θ) * r));
+    }
+    const m = basicMat(0xff3b2f);
     const g = new THREE.Group();
-    const m = basicMat(0xff5b5b);
-    const R = 0.055, start = 0.7, len = 1.8;
-    const torus = new THREE.Mesh(new THREE.TorusGeometry(R, 0.0035, 6, 32, len), m);
-    torus.rotation.z = start;
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.022, 12), m);
-    const end = start + len;
-    cone.position.set(Math.cos(end) * R, Math.sin(end) * R, 0);
-    cone.rotation.z = end; // cone points along +Y locally; rotate so it follows the arc tangent
-    g.add(torus, cone);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.005, 6), m));
+    const end = pts[pts.length - 1], prev = pts[pts.length - 2];
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.034, 12), m);
+    cone.position.copy(end);
+    cone.quaternion.setFromUnitVectors(Yup, end.clone().sub(prev).normalize());
+    g.add(cone);
     g.userData = { m };
-    twist[S] = reg(g, 43);
-  }
-  const tugIn = arrow(0xffb02e), tugOut = arrow(0x5fa8ff);
+    return reg(g, 43);
+  })();
 
-  // ---- butt wink
-  const hipRange = gauge(0.085, 0.009);
-  const disc = reg(new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.008, 20), basicMat(0xffffff, 0.9)), 43);
-
-  const _a = new V3(), _b = new V3();
+  const _a = new V3();
   const cylBetween = (mesh, a, b, r) => {
     const d = _a.copy(b).sub(a);
     mesh.position.copy(a).add(b).multiplyScalar(0.5);
@@ -174,12 +174,14 @@ export function createSquatViz(scene, { camera, showLabel }) {
   const loadColor = (r) => (r < 0.75 ? 0x5fd38a : r < 1.05 ? 0xffd23f : 0xff5b5b);
 
   /**
-   * ctx: { skel, variant, kin, A, peaks, hipLimit, ui:{loads} }
+   * ctx: { skel, variant, kin, A, peaks, hipLimit, pulse (0..1 throb), ui:{loads} }
+   * Returns { kneeStrain } (0..1) for the knee close-up.
    */
   function update(ctx) {
-    const { skel, variant, kin, A, peaks, ui } = ctx;
+    const { skel, variant, kin, peaks, ui } = ctx;
+    const pulse = ctx.pulse ?? 0;
     for (const o of items) o.visible = false;
-    const fault = variant !== 'proper';
+    let kneeStrain = 0;
 
     // Joint loads: lever arm (dashed), line of the weight above (dashed), gauge.
     const L = jointLoads(skel);
@@ -200,53 +202,47 @@ export function createSquatViz(scene, { camera, showLabel }) {
       }
     }
 
-    // Knees caving in: floor force line vs knee position.
+    // Knees caving in: how far each knee sits inside its foot decides how hard the MCL is stretched.
     if (variant === 'valgus') {
       for (const S of SIDES) {
         const s = SIDE_SIGN[S];
-        const cop = boneLocal(skel, `foot_${S}`, 0.105 * s, 0.0, 0.03);
-        // With both feet down, each foot pushes roughly straight up.
-        const dir = new V3(0, 1, 0);
-        setArrow(grf[S], cop, dir, 0.62, 0.0028);
+        const foot = boneLocal(skel, `foot_${S}`, 0.105 * s, 0.0, 0.03);
         const knee = bonePos(skel, `tibia_${S}`);
-        const t = knee.clone().sub(cop).dot(dir);
-        const onLine = cop.clone().addScaledVector(dir, t);
-        const medial = (knee.x - onLine.x) * -s; // >0: knee is inside the force line
+        const medial = (knee.x - foot.x) * -s; // >0: knee has dropped inside the foot
         const strain = Math.max(0, Math.min(1, medial / 0.035));
-        if (medial > 0.004) setLine(grfLever[S], [knee, onLine]);
-        // MCL: inner side of the knee, from femur to tibia.
+        kneeStrain = Math.max(kneeStrain, strain);
         const a = boneLocal(skel, `femur_${S}`, 0.072 * s, 0.515, -0.006), b = boneLocal(skel, `tibia_${S}`, 0.074 * s, 0.455, 0.004);
-        cylBetween(mcl[S], a, b, 0.0045 + 0.003 * strain);
-        mcl[S].material.color.setRGB(1, 1 - 0.75 * strain, 1 - 0.8 * strain);
-        if (strain > 0.12) {
-          const tw = twist[S];
-          tw.position.copy(knee);
-          tw.scale.set(s * (0.7 + 0.5 * strain), 0.7 + 0.5 * strain, 1);
-          tw.userData.m.opacity = 0.35 + 0.65 * strain;
-          tw.visible = true;
-        }
+        const throb = strain > 0.4 ? pulse * (strain - 0.4) / 0.6 : 0;
+        cylBetween(mcl[S], a, b, 0.0045 + 0.003 * strain + 0.003 * throb);
+        mcl[S].material.color.setRGB(1, Math.max(0, 1 - 0.8 * strain - 0.2 * throb), Math.max(0, 1 - 0.85 * strain - 0.15 * throb));
       }
-      // Tug of war at the right knee: adductors pull it in, glute medius holds the thigh out.
-      const kR = bonePos(skel, 'tibia_R').add(new V3(0, 0.035, 0.03));
-      setArrow(tugIn, kR, new V3(1, 0, 0), 0.02 + 0.14 * A.addTfl, 0.0035);
-      setArrow(tugOut, kR, new V3(-1, 0, 0), 0.02 + 0.14 * A.gmed, 0.0035);
     }
 
-    // Butt wink: the hip runs out of range, so the pelvis has to tuck under; the disc is squeezed.
+    // Butt wink: at its limit the thigh jams into the hip; going lower anyway rolls the pelvis under.
     if (variant === 'wink') {
       const hipFlex = kin.thigh + kin.torso - kin.wink - kin.lumbar;
-      const frac = hipFlex / ctx.hipLimit;
-      const atLimit = frac > 0.985;
-      const hip = bonePos(skel, 'femur_R');
-      setGauge(hipRange, hip, frac * 0.75, atLimit ? 0xff5b5b : 0xb58cff, 0.75);
-      const flex = kin.wink + kin.lumbar;
-      const k = Math.min(1, flex / 15);
-      disc.position.copy(bonePos(skel, 'lumbar')).add(new V3(0, -0.012, 0.0));
-      disc.quaternion.copy(skel.wq.lumbar);
-      disc.scale.set(1 + 0.25 * k, 1 - 0.4 * k, 1 + 0.25 * k);
-      disc.material.color.setRGB(1, 1 - 0.75 * k, 1 - 0.8 * k);
-      disc.visible = true;
+      const near = Math.max(0, Math.min(1, (hipFlex / ctx.hipLimit - 0.88) / 0.11));
+      const hip = bonePos(skel, 'femur_R'), knee = bonePos(skel, 'tibia_R');
+      if (near > 0.02) {
+        const from = knee.clone().lerp(hip, 0.4);
+        const dir = hip.clone().sub(from);
+        const len = dir.length() * 0.78;
+        setArrow(pushArrow, from, dir.normalize(), len, 0.004 + 0.004 * near + 0.002 * near * pulse);
+        pushArrow.userData.m.opacity = 0.35 + 0.6 * near;
+        contact.position.copy(hip).add(new V3(0, 0.0, 0.03));
+        contact.scale.setScalar(0.6 + 0.6 * near + 0.5 * near * pulse);
+        contact.material.opacity = near * (0.55 + 0.45 * pulse);
+        contact.visible = true;
+      }
+      const w = Math.max(0, Math.min(1, kin.wink / 14));
+      if (w > 0.03) {
+        tuck.position.copy(bonePos(skel, 'pelvis'));
+        tuck.scale.setScalar(0.8 + 0.3 * w);
+        tuck.userData.m.opacity = 0.3 + 0.7 * w;
+        tuck.visible = true;
+      }
     }
+    return { kneeStrain };
   }
 
   return { update };

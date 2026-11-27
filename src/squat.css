@@ -138,3 +138,10 @@
 #zoomLink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; overflow: visible; }
 #zoomLink line { stroke: #c9d0d8; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.8; }
 #zoomLink circle { fill: none; stroke: #c9d0d8; stroke-width: 2; opacity: 0.9; }
+#spine .t, #knee .t { paint-order: stroke; stroke: #14181e; stroke-width: 3px; stroke-linejoin: round; }
+/* knee zoom bubble: same look and place as the spine bubble */
+#viewport #knee { position: absolute; left: 12px; top: 70px; display: none; pointer-events: none; }
+#viewport #knee.on { display: block; }
+#viewport #knee svg { display: block; width: 200px; height: auto; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)); }
+#knee .t { font: 10.5px ui-sans-serif, system-ui, sans-serif; fill: #8d98a6; }
+#viewport #knee .cap { font-size: 11px; color: #c9d0d8; text-align: center; margin-top: 2px; }

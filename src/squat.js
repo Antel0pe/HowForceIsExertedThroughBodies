@@ -9,6 +9,7 @@ import {
 } from './squatModel.js';
 import { createSquatViz, centerOfMass as comOf, jointLoads, bonePos, boneLocal } from './squatViz.js';
 import { createSpineInset } from './spineInset.js';
+import { createKneeInset } from './kneeInset.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -19,7 +20,7 @@ const VIEWS = {
   front: [[0, 0.9, 4.4], [0, 0.68, 0]],
   side: [[-4.4, 0.9, 0.15], [0, 0.68, 0.03]],
   back: [[0, 0.9, -4.4], [0, 0.68, 0]],
-  knees: [[-0.15, 0.55, 1.8], [0, 0.33, 0.03]],
+  knees: [[-0.36, 0.55, 1.8], [-0.2, 0.33, 0.03]],
   hips: [[-2.4, 0.62, 0.05], [0, 0.45, -0.32]],
   sideR: [[-4.9, 1.0, -0.22], [0, 0.78, -0.22]],
 };
@@ -31,6 +32,7 @@ const ui = { skel: true, fade: true, align: false, balance: false, loads: false,
 const pickAt = createPicker({ renderer, camera, body, bonesVisible: () => ui.skel });
 const groupById = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
 const spine = createSpineInset($('#spine'));
+const kneeZoom = createKneeInset($('#knee'));
 
 const state = { variant: 'proper', t: 0, playing: true, speed: 1 };
 const variant = () => VARIANTS.find((v) => v.id === state.variant);
@@ -332,6 +334,7 @@ function setVariant(id) {
   renderSteps();
   $('#tickLegend').style.display = id === 'proper' ? 'none' : '';
   $('#spine').classList.toggle('on', id === 'hips' || id === 'wink');
+  $('#knee').classList.toggle('on', id === 'valgus');
   setView(variant().view);
 }
 
@@ -458,11 +461,12 @@ function updateSpineStrain(kin) {
 // Marker on the lower back + line to the zoom bubble.
 const zoomLink = $('#zoomLink');
 function updateZoomLink() {
-  const on = $('#spine').classList.contains('on');
+  const bubble = $('#knee').classList.contains('on') ? $('#knee') : $('#spine');
+  const on = bubble.classList.contains('on');
   zoomLink.style.display = on ? 'block' : 'none';
   if (!on) return;
-  const vr = viewport.getBoundingClientRect(), sr = $('#spine svg').getBoundingClientRect();
-  const p = local('lumbar', 0, 1.1, -0.1).project(camera);
+  const vr = viewport.getBoundingClientRect(), sr = bubble.querySelector('svg').getBoundingClientRect();
+  const p = (bubble.id === 'knee' ? pivot('tibia_R') : local('lumbar', 0, 1.1, -0.1)).project(camera);
   const mx = ((p.x + 1) / 2) * vr.width, my = ((1 - p.y) / 2) * vr.height;
   const cx = sr.left - vr.left + sr.width / 2, cy = sr.top - vr.top + sr.height / 2, r = sr.width / 2;
   const dx = mx - cx, dy = my - cy, d = Math.hypot(dx, dy) || 1;
@@ -499,7 +503,9 @@ function tick() {
   processHover();
   updateMaterials(A, AP, dt, f.flash);
   updateOverlays(kin);
-  viz.update({ skel, variant: state.variant, kin, A, peaks: PEAKS, hipLimit: WINK_HIP_LIMIT, ui });
+  const pulse = 0.5 + 0.5 * Math.sin(clockT * 2 * Math.PI * 2.2);
+  const vz = viz.update({ skel, variant: state.variant, kin, A, peaks: PEAKS, hipLimit: WINK_HIP_LIMIT, ui, pulse });
+  if (state.variant === 'valgus') kneeZoom.update({ strain: vz.kneeStrain, pulse });
   if (f.label) showStoryLabel(f.label);
   updateFly(dt);
   controls.update();
