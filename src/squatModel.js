@@ -81,7 +81,7 @@ export const VARIANTS = [
   },
   {
     id: 'valgus', name: 'Knees cave in', view: 'knees',
-    list: ['Side glutes tire', 'Knees fall inward', 'Knee twists: inner ligament strained'],
+    list: ['Side glutes tire and let go', 'Knees fall inward', 'Inner knee ligament strained'],
     matters: ['The knee is a hinge: weak against twisting', 'Strains the MCL, ACL and kneecap'],
     fix: ['Push the knees out over the little toes', 'Band around the knees as a reminder', 'Strengthen the side glutes'],
   },
@@ -95,7 +95,7 @@ export const VARIANTS = [
 
 // ------------------------------------------------------------------ fault stories
 // Each beat: dur (s), n (which of the 3 list items it shows, 0 = none), caption (few words),
-// at(k, ctx) → { st, round?, valgus?, flash?, act?, label? } for k = 0..1 through the beat.
+// at(k, ctx) → { st, round?, valgus?, hold?, flash?, act?, label? } for k = 0..1 through the beat.
 // label: { at: 'thigh'|'back'|'hip'|'knee'|'pelvis', text, bar?: { value 0..1, color } }: one at a time.
 const mk = (phase, s, u = null) => ({ phase, phaseInfo: PHASES.find((p) => p.id === phase), k: 0, s, u, brace: 1, arms: 1 });
 const RED = '#ff5b5b';
@@ -152,10 +152,13 @@ const hipsAscent = (τ) => {
 const VALGUS_U = curve([[0, 0], [2.2, 0.07], [3.8, 0.28], [6.0, 0.45], [7.8, 1]]);
 const valgusAscent = (τ) => {
   const u = VALGUS_U(τ);
-  const glutes = 1 - 0.7 * sm(clamp01((τ - 2.6) / 1.6));
+  // The side glutes strain, then let go (their rope goes slack) just before the knees fall in;
+  // the rope pulls tight again as the knees come back out near the top.
+  const letGo = sm(clamp01((τ - 1.4) / 1.8));
+  const glutes = 1 - 0.75 * letGo;
   const v = (3 + 12 * sm(clamp01((τ - 1.6) / 2.4))) * (1 - sm(clamp01((τ - 6.0) / 1.8)));
-  return { st: mk('ascent', 1 - u, u), valgus: v, flash: { gmed: glutes * (1 - sm(clamp01((τ - 5.5) / 1.5))) },
-    act: { gmed: lerp(0.15, 0.5, glutes), addTfl: 0.25 } };
+  return { st: mk('ascent', 1 - u, u), valgus: v, hold: 1 - letGo * (1 - sm(clamp01((τ - 6.0) / 1.6))),
+    flash: { gmed: 1 - letGo }, act: { gmed: lerp(0.15, 0.5, glutes), addTfl: 0.25 } };
 };
 
 const WINK_U = curve([[0, 0], [1.4, 0.15], [3.6, 1]]);
@@ -173,11 +176,11 @@ export const STORIES = {
     { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },
   ],
   valgus: [
-    { dur: 2.4, n: 0, caption: 'Going down', at: (k) => ({ st: mk('descent', ease(k)), valgus: 3 * ease(k) }) },
+    { dur: 2.4, n: 0, caption: 'Side glutes hold the knees out', at: (k) => ({ st: mk('descent', ease(k)), valgus: 3 * ease(k), hold: 1 }) },
     ...ascentSegments([
-      [2.2, 1, 'Side glutes struggle'],
+      [2.2, 1, 'Side glutes tire and let go'],
       [1.6, 2, 'Knees fall inward'],
-      [2.2, 3, 'Knee twists: inner ligament strained'],
+      [2.2, 3, 'Inner knee ligament strained'],
       [1.8, 0, 'Stands up'],
     ], valgusAscent),
     { dur: 0.9, n: 0, caption: '', at: (k) => ({ st: { ...mk('rest', 0), brace: 1 - k, arms: 1 - k } }) },

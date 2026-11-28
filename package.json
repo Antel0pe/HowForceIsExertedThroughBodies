@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun --hot server.ts",
     "start": "NODE_ENV=production bun server.ts",
-    "build": "bun build ./index.html ./squat.html --outdir dist --minify"
+    "build": "bun build ./index.html ./squat.html ./bear.html --outdir dist --minify"
   },
   "dependencies": {
     "three": "0.170.0"

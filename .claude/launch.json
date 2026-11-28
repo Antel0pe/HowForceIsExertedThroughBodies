@@ -4,8 +4,49 @@
     {
       "name": "muscle-viewer",
       "runtimeExecutable": "wsl.exe",
-      "runtimeArgs": ["-e", "bash", "-lc", "cd ~/Projects/HowForceIsExertedThroughBodies && bun run dev"],
+      "runtimeArgs": [
+        "-e",
+        "bash",
+        "-lc",
+        "cd ~/Projects/HowForceIsExertedThroughBodies && bun run dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "muscle-viewer-alt",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-e",
+        "bash",
+        "-lc",
+        "cd ~/Projects/HowForceIsExertedThroughBodies && PORT=5174 bun run dev"
+      ],
+      "port": 5174,
+      "autoPort": false
+    },
+    {
+      "name": "muscle-viewer-5175",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-e",
+        "bash",
+        "-lc",
+        "cd ~/Projects/HowForceIsExertedThroughBodies && PORT=5175 bun run dev"
+      ],
+      "port": 5175,
+      "autoPort": false
+    },
+    {
+      "name": "muscle-viewer-5176",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-e",
+        "bash",
+        "-lc",
+        "cd ~/Projects/HowForceIsExertedThroughBodies && PORT=5176 bun run dev"
+      ],
+      "port": 5176,
+      "autoPort": false
     }
   ]
 }

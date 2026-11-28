@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bear Run · Muscle Force Explorer</title>
+  <link rel="stylesheet" href="./src/style.css" />
+  <link rel="stylesheet" href="./src/squat.css" />
+  <link rel="stylesheet" href="./src/bear.css" />
+</head>
+<body data-page="bear">
+  <div id="app">
+    <aside id="left">
+      <header>
+        <h1>Bear Run</h1>
+        <p>A grizzly skeleton with its running muscles.</p>
+      </header>
+      <div id="variants">
+        <button data-mode="run" class="on"><i class="dot"></i>Gallop</button>
+        <button data-mode="stand"><i class="dot"></i>One muscle at a time</button>
+      </div>
+      <div id="leftScroll">
+        <div id="runOnly">
+          <ol id="steps" class="story"></ol>
+          <h3 class="sec">Paws on the ground</h3>
+          <svg id="gait"></svg>
+          <p class="hint">Glow = working hard. Click any muscle.</p>
+        </div>
+        <div id="standOnly" hidden>
+          <p class="hint">Click any muscle (or a name on the right) to watch it pull.</p>
+          <ul class="key">
+            <li><i class="sw sel"></i>Contracting: shortens and pulls</li>
+            <li><i class="sw syn"></i>Helpers: shorten with it</li>
+            <li><i class="sw ant"></i>Opposite side: gets stretched</li>
+            <li><i class="sw arr"></i>Pull on the bones</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <main id="viewport">
+      <div id="phase"></div>
+      <div id="views">
+        <button data-view="side">Side</button>
+        <button data-view="three">¾</button>
+        <button data-view="front">Front</button>
+        <button data-view="above">Above</button>
+      </div>
+      <div id="labels"></div>
+      <div id="tooltip"></div>
+      <div id="toolbar">
+        <div id="playbar">
+          <button id="play" title="Pause (Space)">❚❚</button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" title="Scrub through one stride" />
+          <select id="speed" title="Playback speed">
+            <option value="0.1">0.1×</option>
+            <option value="0.2" selected>0.2×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1">real speed</option>
+          </select>
+        </div>
+        <div id="toggles">
+          <label><input type="checkbox" id="tSkel" checked />Skeleton</label>
+          <label title="Fade muscles that are not glowing"><input type="checkbox" id="tFade" checked />Fade the rest</label>
+        </div>
+      </div>
+    </main>
+
+    <aside id="right">
+      <div id="rightScroll">
+        <div id="picked"></div>
+        <h3 class="sec">How hard each muscle works <small>(left side)</small></h3>
+        <div class="emg-legend">
+          <span><i class="m con"></i>shortening</span>
+          <span><i class="m ecc"></i>lengthening</span>
+          <span><i class="m iso"></i>holding</span>
+        </div>
+        <div id="emg"></div>
+        <p class="fine">Simulated from the gait, not measured.</p>
+      </div>
+    </aside>
+  </div>
+  <script type="module" src="./src/bear.js"></script>
+</body>
+</html>

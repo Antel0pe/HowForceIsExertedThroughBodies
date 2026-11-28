@@ -1,6 +1,7 @@
 // Squat Lab page. Proper form plays a normal rep; each fault plays as a slow, paced story of three beats
 // (with pauses) so you can see what gives out, what takes over, and where the strain ends up.
 import * as THREE from 'three';
+import './appSwitch.js';
 import { SIDES, SIDE_LABEL } from './skeleton.js';
 import { createStage, createBody, createPicker, esc, clamp01, glowTexture } from './viewer.js';
 import {
@@ -20,7 +21,7 @@ const VIEWS = {
   front: [[0, 0.9, 4.4], [0, 0.68, 0]],
   side: [[-4.4, 0.9, 0.15], [0, 0.68, 0.03]],
   back: [[0, 0.9, -4.4], [0, 0.68, 0]],
-  knees: [[-0.36, 0.55, 1.8], [-0.2, 0.33, 0.03]],
+  knees: [[-0.3, 1.45, 1.75], [-0.1, 0.4, 0.1]],
   hips: [[-2.4, 0.62, 0.05], [0, 0.45, -0.32]],
   sideR: [[-4.9, 1.0, -0.22], [0, 0.78, -0.22]],
 };
@@ -504,8 +505,13 @@ function tick() {
   updateMaterials(A, AP, dt, f.flash);
   updateOverlays(kin);
   const pulse = 0.5 + 0.5 * Math.sin(clockT * 2 * Math.PI * 2.2);
-  const vz = viz.update({ skel, variant: state.variant, kin, A, peaks: PEAKS, hipLimit: WINK_HIP_LIMIT, ui, pulse });
-  if (state.variant === 'valgus') kneeZoom.update({ strain: vz.kneeStrain, pulse });
+  const vz = viz.update({ skel, variant: state.variant, kin, A, peaks: PEAKS, hipLimit: WINK_HIP_LIMIT, ui, pulse, hold: f.hold });
+  if (state.variant === 'valgus') {
+    // How upright the thigh is, seen from the front: the zoomed thigh bone grows as you stand up.
+    const hip = bonePos(skel, 'femur_R'), knee = bonePos(skel, 'tibia_R');
+    const thighUp = clamp01((hip.y - knee.y) / hip.distanceTo(knee));
+    kneeZoom.update({ strain: vz.kneeStrain, pulse, thighUp });
+  }
   if (f.label) showStoryLabel(f.label);
   updateFly(dt);
   controls.update();

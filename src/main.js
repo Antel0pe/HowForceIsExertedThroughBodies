@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './appSwitch.js';
 import { SIDES, SIDE_SIGN, SIDE_LABEL, JOINTS, BONE_LABEL, DOF_LABEL } from './skeleton.js';
 import { NSEG } from './muscleMesh.js';
 import { MUSCLES, REGIONS } from './muscles.js';
